@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./travel_planner.db:/app/travel_planner.db
+    env_file:
+      - .env
+    restart: unless-stopped
