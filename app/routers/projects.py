@@ -14,6 +14,9 @@ router = APIRouter(prefix="/api/v1/projects", tags=["Projects"])
 async def create_project(data: ProjectCreate, db: Session = Depends(get_db)):
     place_ids = data.places or []
 
+    if len(place_ids) > 10:
+        raise HTTPException(status_code=422, detail="Cannot add more than 10 places")
+
     artworks = []
     for external_id in place_ids:
         artwork = await get_artwork(external_id)

@@ -17,8 +17,3 @@ app = FastAPI(
 app.include_router(projects.router)
 app.include_router(places.router)
 app.include_router(artworks.router)
-
-
-@app.get("/")
-def root():
-    return {"message": "Travel Planner API", "version": settings.app_version}
