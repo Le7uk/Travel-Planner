@@ -2,16 +2,42 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.place import Place
 from app.models.project import Project
 from app.schemas.project import ProjectCreate, ProjectResponse, ProjectUpdate
+from app.services.aic_client import get_artwork, get_image_url
 
 router = APIRouter(prefix="/api/v1/projects", tags=["Projects"])
 
 
 @router.post("/", response_model=ProjectResponse, status_code=201)
-def create_project(data: ProjectCreate, db: Session = Depends(get_db)):
-    project = Project(**data.model_dump())
+async def create_project(data: ProjectCreate, db: Session = Depends(get_db)):
+    place_ids = data.places or []
+
+    artworks = []
+    for external_id in place_ids:
+        artwork = await get_artwork(external_id)
+        if not artwork:
+            raise HTTPException(
+                status_code=404, detail=f"Artwork {external_id} not found"
+            )
+        artworks.append(artwork)
+
+    project = Project(**data.model_dump(exclude={"places"}))
     db.add(project)
+    db.commit()
+    db.refresh(project)
+
+    for artwork in artworks:
+        place = Place(
+            project_id=project.id,
+            external_id=artwork["id"],
+            title=artwork.get("title", "Unknown"),
+            artist=artwork.get("artist_display"),
+            image_url=get_image_url(artwork.get("image_id")),
+        )
+        db.add(place)
+
     db.commit()
     db.refresh(project)
     return project
