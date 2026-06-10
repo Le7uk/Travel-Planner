@@ -1,106 +1,114 @@
+
 # Travel Planner API
 
-A RESTful API for managing travel projects and places to visit, built with FastAPI and SQLite.
+A RESTful API for managing travel projects and places to visit, built with FastAPI and SQLite. Places are sourced from the [Art Institute of Chicago API](https://api.artic.edu/docs/).
 
 ## Tech Stack
 
-- **FastAPI** — web framework
-- **SQLAlchemy** — ORM
-- **SQLite** — database
-- **Pydantic** — data validation
-- **httpx** — async HTTP client for AIC API
-- **Docker** — containerization
+- **Python 3.11** + **FastAPI**
+- **SQLAlchemy** + **SQLite**
+- **Pydantic v2** — data validation
+- **httpx** — async HTTP client
+- **Docker** + **docker-compose**
 
 ## Features
 
-- CRUD for travel projects
-- Add/manage places from the [Art Institute of Chicago API](https://api.artic.edu/docs/)
-- Business rules: max 10 places per project, no duplicates, auto-complete project
+- Full CRUD for travel projects
+- Add/manage places from the Art Institute of Chicago API
+- Search artworks by name to find IDs
+- Business logic: max 10 places, no duplicates, auto-complete project
 - Basic HTTP Authentication
-- Interactive API docs (Swagger UI)
+- Interactive API docs via Swagger UI
 
-## Getting Started
+## Quick Start
 
 ### Option 1: Docker (recommended)
 
 ```bash
-# 1. Clone the repo
 git clone https://github.com/Le7uk/Travel-Planner.git
 cd Travel-Planner
-
-# 2. Copy env file
 cp .env.example .env
-
-# 3. Run
 docker-compose up --build
 ```
 
 ### Option 2: Local
 
 ```bash
-# 1. Clone and create virtual env
 git clone https://github.com/Le7uk/Travel-Planner.git
 cd Travel-Planner
+
 python -m venv venv
-venv\Scripts\activate  # Windows
-# source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
 
-# 2. Install dependencies
 pip install -r requirements.txt
-
-# 3. Copy env file
 cp .env.example .env
-
-# 4. Run
 uvicorn app.main:app --reload
 ```
 
-API available at: **http://localhost:8000**
-
-## API Documentation
-
-Swagger UI: **http://localhost:8000/docs**
+**API:** http://localhost:8000  
+**Swagger UI:** http://localhost:8000/docs  
+**OpenAPI JSON:** http://localhost:8000/openapi.json
 
 ## Authentication
 
-All endpoints require **Basic Authentication**:
-- Username: `admin`
-- Password: `secret`
+All endpoints require **HTTP Basic Authentication**.
 
-(Configurable via `.env` file)
+| Credential | Default |
+|---|---|
+| Username | `admin` |
+| Password | `secret` |
+
+Configure in `.env` file.
 
 ## Environment Variables
+
+Copy `.env.example` to `.env`:
 
 | Variable | Default | Description |
 |---|---|---|
 | `APP_NAME` | Travel Planner | Application name |
 | `APP_VERSION` | 1.0.0 | API version |
-| `DATABASE_URL` | sqlite:///./travel_planner.db | Database URL |
-| `AUTH_USERNAME` | admin | Basic auth username |
-| `AUTH_PASSWORD` | secret | Basic auth password |
+| `DATABASE_URL` | `sqlite:///./travel_planner.db` | Database URL |
+| `AUTH_USERNAME` | `admin` | Basic auth username |
+| `AUTH_PASSWORD` | `secret` | Basic auth password |
 
 ## API Endpoints
 
+### Artworks (Art Institute of Chicago)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/v1/artworks/search?q={query}` | Search artworks by name |
+
 ### Projects
+
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/v1/projects` | Create project (with optional places) |
 | GET | `/api/v1/projects` | List all projects |
 | GET | `/api/v1/projects/{id}` | Get project by ID |
-| PATCH | `/api/v1/projects/{id}` | Update project |
+| PATCH | `/api/v1/projects/{id}` | Update project name/description/date |
 | DELETE | `/api/v1/projects/{id}` | Delete project |
 
 ### Places
+
 | Method | Endpoint | Description |
 |---|---|---|
 | POST | `/api/v1/projects/{id}/places` | Add place to project |
-| GET | `/api/v1/projects/{id}/places` | List places in project |
+| GET | `/api/v1/projects/{id}/places` | List all places in project |
 | GET | `/api/v1/projects/{id}/places/{place_id}` | Get single place |
-| PATCH | `/api/v1/projects/{id}/places/{place_id}` | Update notes/visited |
+| PATCH | `/api/v1/projects/{id}/places/{place_id}` | Update notes or visited status |
 
-## Example Requests
+## Example Workflow
 
-### Create project with places
+### 1. Search for artworks
+```
+GET /api/v1/artworks/search?q=sunday
+```
+Returns list of artworks with IDs, titles, artists.
+
+### 2. Create a project with places
 ```json
 POST /api/v1/projects
 {
@@ -111,26 +119,35 @@ POST /api/v1/projects
 }
 ```
 
-### Mark place as visited
+### 3. Add a place to existing project
+```json
+POST /api/v1/projects/1/places
+{
+  "external_id": 11434
+}
+```
+
+### 4. Add a note to a place
+```json
+PATCH /api/v1/projects/1/places/1
+{
+  "notes": "Second floor, room 240. Don't miss the audio guide!"
+}
+```
+
+### 5. Mark place as visited
 ```json
 PATCH /api/v1/projects/1/places/1
 {
   "visited": true
 }
 ```
-
-### Add note to place
-```json
-PATCH /api/v1/projects/1/places/1
-{
-  "notes": "Second floor, room 201"
-}
-```
+When all places are visited → project status automatically changes to `completed`.
 
 ## Business Rules
 
 - Maximum **10 places** per project
 - Cannot add the **same place twice** to a project
-- Cannot **delete a project** that has visited places
-- Project status changes to **completed** when all places are visited
-- Places are validated against the **Art Institute of Chicago API**
+- Cannot **delete** a project that has visited places
+- Project auto-completes when **all places are visited**
+- Places are validated against the **AIC API** before saving
