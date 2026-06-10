@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from app.core.auth import verify_credentials
 from app.core.config import settings
 from app.database import Base, engine
-from app.routers import projects, places
+from app.routers import projects, places, artworks
 
 Base.metadata.create_all(bind=engine)
 
@@ -16,6 +16,7 @@ app = FastAPI(
 
 app.include_router(projects.router)
 app.include_router(places.router)
+app.include_router(artworks.router)
 
 
 @app.get("/")
